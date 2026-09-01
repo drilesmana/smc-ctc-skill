@@ -75,7 +75,7 @@ live = rows[-1]
 
 dec = 1 if live["c"] > 100 else (4 if live["c"] > 0.1 else 8)
 def f(x): return f"{x:,.{dec}f}"
-def t(ts): return datetime.datetime.utcfromtimestamp(ts / 1000).strftime("%d %b %H:%M")
+def t(ts): return datetime.datetime.fromtimestamp(ts / 1000, datetime.timezone.utc).strftime("%d %b %H:%M")
 def body_hi(b): return max(b["o"], b["c"])
 def body_lo(b): return min(b["o"], b["c"])
 
