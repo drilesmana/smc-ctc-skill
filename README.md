@@ -66,6 +66,34 @@ python3 smc-ctc-analysis/scripts/smc_ctc.py btc
 python3 smc-ctc-analysis/scripts/smc_ctc.py eth 15m
 ```
 
+## XAUUSD / gold support
+
+- **Analysis on demand:** `smc xau` in chat runs `smc_xau_adapter.py`
+  (COMEX futures via Yahoo — good structure proxy) and/or
+  `smc_ctc.py XAUT-USDT` (Tether Gold, tracks spot XAU/USD within ~$3 —
+  the closest thing to an MT4/MT5 spot feed that works without a broker
+  connection).
+- **Watcher (`scripts/smc_watch_xau.py`):** cron-able Telegram alerter for
+  XAUUSD M5 + M15, spot-based (XAUT-USDT). Emits SETUP BARU / MENDEKAT / IDM
+  TERSAPU / ENTRY / SETUP BATAL / POST-ENTRY messages, stays silent on
+  weekends, and keeps state across ticks. stdlib-only.
+
+  ```bash
+  # one-shot debug (prints summary + sends alerts if any)
+  SMC_WATCH_DEBUG=1 python3 smc-ctc-analysis/scripts/smc_watch_xau.py
+
+  # cron it (example: every 5 min); set TELEGRAM_BOT_TOKEN + TG_CHAT_ID
+  # in the environment, or run it via a Hermes no-agent cron job
+  */5 * * * * SMC_WATCH_STATE=$HOME/xau_state.json python3 .../smc_watch_xau.py
+  ```
+
+  If no Telegram config is present, alerts go to stdout (useful for
+  piping into ntfy/ntfy.sh, Discord webhooks, etc.).
+
+  Why XAUT and not futures? COMEX `GC=F` carries a +$30–40 futures basis —
+  M5 structure can differ completely from a broker's spot XAUUSD chart.
+  XAUT is 1 XAUT = 1 oz LBMA gold, verified to track GLD×10 within ~$3.
+
 ## Method notes & honest limitations
 
 - Only closed candles are used for structure (OKX `confirm=1`); the live
