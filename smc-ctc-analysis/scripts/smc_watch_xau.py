@@ -22,8 +22,8 @@ ERR_LOG = os.environ.get("SMC_WATCH_ERRLOG") or os.path.join(
 DEBUG = os.environ.get("SMC_WATCH_DEBUG") == "1"
 CURL = shutil.which("curl") or "/data/data/com.termux/files/usr/bin/curl"
 
-# XAUUSD: XAUT-USDT (spot gold proxy), M5 + M15
-WATCH = [("XAUT-USDT", "5m"), ("XAUT-USDT", "15m")]
+# XAUUSD: XAUT-USDT (spot gold proxy), M5 + M15 + M30
+WATCH = [("XAUT-USDT", "5m"), ("XAUT-USDT", "15m"), ("XAUT-USDT", "30m")]
 LABEL = {"XAUT-USDT": "XAUUSD (spot)"}
 
 NEAR_ATR = 1.0      # jarak (x ATR) untuk alert "mendekat"

@@ -74,7 +74,7 @@ python3 smc-ctc-analysis/scripts/smc_ctc.py eth 15m
   the closest thing to an MT4/MT5 spot feed that works without a broker
   connection).
 - **Watcher (`scripts/smc_watch_xau.py`):** cron-able Telegram alerter for
-  XAUUSD M5 + M15, spot-based (XAUT-USDT). Emits SETUP BARU / MENDEKAT / IDM
+  XAUUSD M5 + M15 + M30, spot-based (XAUT-USDT). Emits SETUP BARU / MENDEKAT / IDM
   TERSAPU / ENTRY / SETUP BATAL / POST-ENTRY messages, stays silent on
   weekends, and keeps state across ticks. stdlib-only.
 
