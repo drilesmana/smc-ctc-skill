@@ -1,7 +1,7 @@
 ---
 name: smc-ctc-analysis
 description: "Trigger 'smc <pair>': SMC BOS/IDM/POI analysis via the Candle-to-Candle method."
-version: 1.1.0
+version: 1.2.0
 author: Drilesmana
 license: MIT
 platforms: [linux, macos, windows]
@@ -69,8 +69,9 @@ user's network — some networks block them. The script retries 4x.
 3. **Valid low / valid high** = leg extreme point (lowest low between the
    broken swing and the BOS candle for bulls; mirror for bears). Present as
    a zone, not a single line.
-4. **Inducement (IDM)** = nearest simple structure inside the leg. Check
-   whether it has been swept. This is the execution gate: if IDM is not yet
+4. **Inducement (IDM)** = nearest internal structure inside the leg (new CTC
+   standard, video 6YSspaWKkhg). The IDM shifts to the latest internal as the
+   leg extends. Check whether it has been swept. This is the execution gate: if IDM is not yet
    swept, the entry is NOT valid — say "WAIT" and name the level that must
    be crossed first.
 5. **Trading range** = valid low ↔ valid high.

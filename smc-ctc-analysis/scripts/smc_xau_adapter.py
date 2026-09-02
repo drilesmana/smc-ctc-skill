@@ -105,23 +105,23 @@ post = bars[j:]
 hh_i = j + max(range(len(post)), key=lambda i: post[i]["h"])
 ll_i = j + min(range(len(post)), key=lambda i: post[i]["l"])
 
-print("\n[4] INDUCEMENT (simple structure terdekat)")
+print("\n[4] INDUCEMENT (internal structure terdekat — standar CTC baru)")
 idm = None
 if d == "bull":
     cand = [i for i in sl if ext_i < i < hh_i]
     if cand:
-        idm = bars[cand[0]]["l"]
-        swept = any(b["l"] < idm for b in bars[cand[0] + 1:])
-        print(f"    IDM low {f(idm)} @ {t(bars[cand[0]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
+        idm = bars[cand[-1]]["l"]
+        swept = any(b["l"] < idm for b in bars[cand[-1] + 1:])
+        print(f"    IDM low {f(idm)} @ {t(bars[cand[-1]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
 else:
     cands = [i for i in sh if ext_i < i < ll_i]
     if cands:
-        idm = bars[cands[0]]["h"]
-        swept = any(b["h"] > idm for b in bars[cands[0] + 1:])
-        print(f"    IDM high {f(idm)} @ {t(bars[cands[0]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
+        idm = bars[cands[-1]]["h"]
+        swept = any(b["h"] > idm for b in bars[cands[-1] + 1:])
+        print(f"    IDM high {f(idm)} @ {t(bars[cands[-1]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
 if idm is None:
     swept = None
-    print("    belum ada IDM minor di dalam leg")
+    print("    belum ada IDM internal di dalam leg")
 
 print("\n[5] TRADING RANGE")
 print(f"    batas atas : {f(bars[hh_i]['h'])} @ {t(bars[hh_i]['ts'])}")

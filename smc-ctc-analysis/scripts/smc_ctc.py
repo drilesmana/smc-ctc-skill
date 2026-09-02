@@ -5,7 +5,8 @@ Alur baku (sama seperti video CTC):
   1. zoom out -> tentukan tren dari arah BOS terakhir
   2. BOS harus BODY break (close melewati level), wick-only = swing gugur
   3. tandai low/high valid = titik ekstrem leg
-  4. inducement = simple structure terdekat di dalam leg; cek sudah tersapu belum
+  4. inducement = internal structure terdekat di dalam leg (standar baru CTC:
+     IDM berpindah ke internal terbaru saat leg memanjang); cek sudah tersapu belum
   5. trading range = low valid <-> high valid
   6. POI = order block (candle berlawanan terakhir sebelum impuls), hanya yang FRESH
   7. entry limit di POI, SL di luar zona + padding ATR ("jangan pelit"), TP = BOS baru
@@ -149,23 +150,23 @@ hh_i = j + max(range(len(post)), key=lambda i: post[i]["h"])
 ll_i = j + min(range(len(post)), key=lambda i: post[i]["l"])
 
 # ---- inducement ----
-print("\n[4] INDUCEMENT (simple structure terdekat)")
+print("\n[4] INDUCEMENT (internal structure terdekat — standar CTC baru)")
 idm = None
 if d == "bull":
     cand = [i for i in sl if ext_i < i < hh_i]
     if cand:
-        idm = bars[cand[0]]["l"]
-        swept = any(b["l"] < idm for b in bars[cand[0] + 1:])
-        print(f"    IDM low {f(idm)} @ {t(bars[cand[0]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
+        idm = bars[cand[-1]]["l"]
+        swept = any(b["l"] < idm for b in bars[cand[-1] + 1:])
+        print(f"    IDM low {f(idm)} @ {t(bars[cand[-1]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
 else:
     cand = [i for i in sh if ext_i < i < ll_i]
     if cand:
-        idm = bars[cand[0]]["h"]
-        swept = any(b["h"] > idm for b in bars[cand[0] + 1:])
-        print(f"    IDM high {f(idm)} @ {t(bars[cand[0]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
+        idm = bars[cand[-1]]["h"]
+        swept = any(b["h"] > idm for b in bars[cand[-1] + 1:])
+        print(f"    IDM high {f(idm)} @ {t(bars[cand[-1]]['ts'])} — tersapu: {'YA' if swept else 'BELUM'}")
 if idm is None:
     swept = None
-    print("    belum ada IDM minor di dalam leg")
+    print("    belum ada IDM internal di dalam leg")
 
 print("\n[5] TRADING RANGE")
 print(f"    batas atas : {f(bars[hh_i]['h'])} @ {t(bars[hh_i]['ts'])}")

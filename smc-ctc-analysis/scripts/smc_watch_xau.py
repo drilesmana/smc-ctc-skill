@@ -186,13 +186,13 @@ def analyze(rows, inst, bar):
     if d == "bull":
         cand = [i for i in sl if ext_i < i < hh_i]
         if cand:
-            idm = bars[cand[0]]["l"]
-            swept = any(b["l"] < idm for b in bars[cand[0] + 1:])
+            idm = bars[cand[-1]]["l"]
+            swept = any(b["l"] < idm for b in bars[cand[-1] + 1:])
     else:
         cand = [i for i in sh if ext_i < i < ll_i]
         if cand:
-            idm = bars[cand[0]]["h"]
-            swept = any(b["h"] > idm for b in bars[cand[0] + 1:])
+            idm = bars[cand[-1]]["h"]
+            swept = any(b["h"] > idm for b in bars[cand[-1] + 1:])
     ready = idm is None or bool(swept)
 
     trs = [max(bars[i]["h"] - bars[i]["l"],
@@ -284,7 +284,7 @@ def formed_msg(ana, sig, wait):
     elif sig["idm"] is not None:
         lines.append(f"IDM {f(sig['idm'])} sudah tersapu ✔")
     else:
-        lines.append("Belum ada IDM minor di leg — ikuti struktur.")
+        lines.append("Belum ada IDM internal di leg — ikuti struktur.")
     if ana["n_fresh"] > 1:
         lines.append(f"POI fresh lain di jalur: {ana['n_fresh'] - 1} — layering opsional.")
     if ana["thin"]:
@@ -437,6 +437,15 @@ def transitions(ana, state, alerts):
                     and p["dist_atr"] <= NEAR_ATR):
                 sig["stage"] = 2
                 alerts.append(near_msg(ana, sig))
+            # standar IDM baru: IDM bisa berpindah — sinkronkan gate
+            # dgn kondisi IDM terbaru (sudah tersapu di history = siap)
+            if (sig["stage"] == 1 and sig.get("wait_idm")
+                    and (ana["idm"] is None or ana["swept"])):
+                sig["wait_idm"] = False
+                near = sig.get("dist", 9) <= NEAR_ATR
+                if near:
+                    sig["stage"] = 2
+                alerts.append(ready_msg(ana, sig, near))
 
 
 def prune(state, now):
