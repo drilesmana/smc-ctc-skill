@@ -2,7 +2,7 @@
 name: smc-ctc-analysis
 description: "Trigger 'smc <pair>': SMC BOS/IDM/POI analysis via the Candle-to-Candle method."
 version: 1.1.0
-author: An
+author: Drilesmana
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

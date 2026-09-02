@@ -108,7 +108,7 @@ python3 smc-ctc-analysis/scripts/smc_ctc.py eth 15m
 ## Credits
 
 Method: the ["Candle to Candle"](https://www.youtube.com/watch?v=QKWafO7F6Mg)
-YouTube channel. Skill author: An. MIT license.
+YouTube channel. Skill author: Drilesmana. MIT license.
 
 > Not financial advice. Levels shift between exchanges — always align with
 > your own chart.
