@@ -1,51 +1,56 @@
 #!/usr/bin/env python3
-"""SMC CTC watch XAUUSD — versi spot gold (harga seperti MT4/MT5).
+"""SMC CTC watch — tick cron Hermes (mode no_agent): stdout = pesan Telegram.
 
-Sumber: XAUT-USDT (Tether Gold di OKX) — 1 XAUT = 1 oz emas LBMA.
-Terbukti mengikuti spot XAUUSD dalam ~$3 (diverifikasi vs GLD ETF Sep 2026:
-XAUT 4,334 vs GLD×10 4,332). Alternatif spot feeds (Dukascopy datafeed,
-freeserv) diblokir/tidak konsisten dari jaringan mobile ini.
+stdout KOSONG = diam total (tidak ada notifikasi). Stdlib only.
+Deteksi struktur adalah mirror persis ~/smc_ctc.py (metode Candle to Candle):
+jangan ubah semantika BOS/IDM/POI tanpa ikut menyetel skill smc-ctc-analysis.
 
-Futures COMEX (GC=F) TIDAK dipakai: basis futures +$30-40 vs spot —
-struktur M5 bisa beda total dari chart MT4/MT5 user.
+State machine per zona POI (key = inst|bar|arah|zl|zh):
+  stage 1 FORMED (setup baru, harga masih jauh)
+       -> 2 NEAR   (jarak <= NEAR_ATR dari zona)
+       -> 3 ENTRY  (harga menyentuh zona POI)
+       -> 4 done   (batal / post-entry warning; tidak alert lagi)
+  BATAL: tren berbalik BOS / close melewati titik ekstrem (struktur pecah)
+         / close menembus zona (safety net; normalnya touch lebih dulu).
+  wait_idm: entry gaya KONSERVATIF menunggu IDM tersapu (gate CTC klasik).
 
-stdout KOSONG = diam total. Stdlib only. State machine identik smc_watch.py.
-Env testing: SMC_WATCH_DEBUG=1, SMC_WATCH_STATE=path alternatif.
+Format alert v1.3 (varian I): tiap setup menampilkan DUA gaya —
+  konservatif: TP batas range, entry sah setelah IDM tersapu
+  agresif (varian I, juara backtest 1 thn x 4 pair): TP 50% jarak ke range,
+  entry boleh langsung tanpa tunggu IDM (M30 WR 40.6% avgR +0.29).
+
+Env testing (jangan dipakai cron):
+  SMC_WATCH_DEBUG=1   -> print ringkasan per pair
+  SMC_WATCH_STATE=... -> path state file alternatif
 """
 import datetime, json, os, shutil, subprocess, time
 
 HOME = os.path.expanduser("~")
 STATE_FILE = os.environ.get("SMC_WATCH_STATE") or os.path.join(
-    HOME, ".hermes", "scripts", "smc_watch_xau_state.json")
-ERR_LOG = os.environ.get("SMC_WATCH_ERRLOG") or os.path.join(
-    HOME, ".hermes", "scripts", "smc_watch_xau_error.log")
+    HOME, ".hermes", "scripts", "smc_watch_state.json")
+ERR_LOG = os.path.join(HOME, ".hermes", "scripts", "smc_watch_error.log")
 DEBUG = os.environ.get("SMC_WATCH_DEBUG") == "1"
 CURL = shutil.which("curl") or "/data/data/com.termux/files/usr/bin/curl"
 
-# XAUUSD: XAUT-USDT (spot gold proxy), M30 only
-WATCH = [("XAUT-USDT", "30m")]
-LABEL = {"XAUT-USDT": "XAUUSD (spot)"}
-
+# pair & TF yang diawasi. Ubah daftar ini untuk menambah/mengurangi.
+WATCH = [
+    ("BTC-USDT", "30m"),
+]
 NEAR_ATR = 1.0      # jarak (x ATR) untuk alert "mendekat"
 MIN_RR = 2.0        # skip setup RR < 2 (aturan metode)
-STALE_H = 96.0      # state XAU lebih lama (market weekend tutup)
-FAIL_ALERT_N = 6
+STALE_H = 48.0      # state sig lebih tua dari ini dipangkas
+FAIL_ALERT_N = 6    # alert "watcher bermasalah" setelah N tick gagal total
 WIB = datetime.timezone(datetime.timedelta(hours=7))
-
-# sesi spot gold: buka Senin 01:00 UTC, tutup Sabtu 01:00 UTC (kasar).
-# XAUT di OKX trade 24/7 — harga weekend MIRIP tapi likuiditas tipis:
-# spread melebar, struktur M5 weekend tidak reliable untuk metode CTC.
-WEEKEND_NOTE = ("⚠️ Weekend: market XAUUSD spot tutup — harga XAUT likuiditas "
-                "tipis, sinyal M5 tidak reliable. Alert ditunda sampai Senin.")
 
 
 def now_wib():
     return datetime.datetime.now(WIB).strftime("%d %b %H:%M")
 
 
-# ---------------- Telegram ----------------
+# ---------------- Telegram (bot @Drilesmana_bot, direct API) ----------------
 
 def _tg_conf():
+    """Token + chat id dari .env Hermes (tidak pernah di-print)."""
     try:
         with open(os.path.join(HOME, ".hermes", ".env")) as fh:
             env = fh.read()
@@ -61,21 +66,16 @@ def _tg_conf():
 
 
 def send_tg(text):
-    # Portable: reads TELEGRAM_BOT_TOKEN / TELEGRAM_HOME_CHANNEL / TG_CHAT_ID
-    # from the environment FIRST (portable), then falls back to the Hermes
-    # .env file. If neither is set, alerts go to stdout instead of Telegram.
-    tok = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat = os.environ.get("TELEGRAM_HOME_CHANNEL") or os.environ.get("TG_CHAT_ID", "")
+    """Kirim pesan ke chat home Telegram. Return True kalau sukses."""
+    tok, chat = _tg_conf()
     if not tok or not chat:
-        tok, chat = _tg_conf()
-    if not tok or not chat:
-        print(text)
         return False
     api = f"https://api.telegram.org/bot{tok}/sendMessage"
+    # jaringan mobile sering gagal ke api.telegram.org -> retry + fallback IP
     for att in range(3):
         cmd = [CURL, "-s", "--max-time", "15", "-X", "POST", api,
                "-d", f"chat_id={chat}", "--data-urlencode", f"text={text}"]
-        if att == 2:
+        if att == 2:                      # percobaan terakhir: IP telegram cadangan
             cmd[1:1] = ["--resolve", "api.telegram.org:443:149.154.166.110"]
         try:
             out = subprocess.run(cmd, capture_output=True, text=True,
@@ -92,16 +92,10 @@ def t_wib(ts_ms):
     return datetime.datetime.fromtimestamp(ts_ms / 1000, WIB).strftime("%d %b %H:%M")
 
 
-def is_weekend():
-    """True kalau Sabtu, atau Jumat setelah 22:30 UTC (likuiditas mulai habis)."""
-    now = datetime.datetime.now(datetime.timezone.utc)
-    return now.weekday() == 5 or (now.weekday() == 4 and now.hour >= 22)
-
-
 # ---------------- data ----------------
 
 def fetch(inst, bar, limit=300):
-    """OKX candles; None kalau gagal."""
+    """OKX candles; None kalau gagal (jaringan mobile sering drop)."""
     url = ("https://www.okx.com/api/v5/market/candles"
            f"?instId={inst}&bar={bar}&limit={limit}")
     for att in range(3):
@@ -112,7 +106,7 @@ def fetch(inst, bar, limit=300):
             j = json.loads(out)
             if j.get("code") == "0" and j.get("data"):
                 rows = []
-                for c in reversed(j["data"]):
+                for c in reversed(j["data"]):   # OKX = newest first
                     rows.append(dict(ts=int(c[0]), o=float(c[1]), h=float(c[2]),
                                      l=float(c[3]), c=float(c[4]), confirm=c[8]))
                 return rows
@@ -139,7 +133,7 @@ def analyze(rows, inst, bar):
     bars = [r for r in rows if r["confirm"] == "1"]
     if len(bars) < 40:
         return None
-    live = rows[-1]
+    live = rows[-1]                      # candle live hanya untuk CMP/trigger
     cmp_ = live["c"]
 
     sh, sl = swings(bars)
@@ -239,7 +233,7 @@ def analyze(rows, inst, bar):
         p["dist_atr"] = ((cmp_ - p["zh"]) / atr if d == "bull"
                          else (p["zl"] - cmp_) / atr)
 
-    dec = 1 if cmp_ > 100 else (4 if cmp_ > 0.1 else 2)
+    dec = 1 if cmp_ > 100 else (4 if cmp_ > 0.1 else 8)
     return dict(inst=inst, bar=bar, d=d, cmp=cmp_, live=live, bars=bars,
                 bos_lvl=lvl, bos_close=bars[j]["c"], bos_ts=bars[j]["ts"],
                 thin=thin, narrow=rng < atr * 3, ext_lvl=ext_lvl, idm=idm,
@@ -267,13 +261,13 @@ def rr_agr(sig):
 
 def batal_msg(ana, sig, reason):
     f = ana["f"]
-    return (f"🔴 SETUP BATAL · XAUUSD {sig['bar']} · arah {sig['d'].upper()}\n"
+    return (f"🔴 SETUP BATAL · {sig['inst']} {sig['bar']} · arah {sig['d'].upper()}\n"
             f"POI {f(sig['zl'])} – {f(sig['zh'])} — {reason}.")
 
 
 def post_msg(ana, sig, reason):
     f = ana["f"]
-    return (f"🟠 POST-ENTRY · XAUUSD {sig['bar']} · {sig['d'].upper()} — {reason}\n"
+    return (f"🟠 POST-ENTRY · {sig['inst']} {sig['bar']} · {sig['d'].upper()} — {reason}\n"
             f"Entry {f(sig['entry'])} · SL {f(sig['sl'])} — cek posisi, jangan hope.")
 
 
@@ -361,13 +355,14 @@ def transitions(ana, state, alerts):
     last = bars[-1]
     bull = d == "bull"
 
+    # --- sig lama utk pair|tf ini ---
     for key, sig in list(state.items()):
         if not isinstance(sig, dict) or "stage" not in sig:
             continue
         if sig.get("inst") != inst or sig.get("bar") != bar:
             continue
         if sig["stage"] >= 4:
-            continue
+            continue                      # done: tua-kan via updated, jangan sentuh
         if sig["d"] != d:
             sig["stage"] = 4
             alerts.append(batal_msg(
@@ -386,6 +381,7 @@ def transitions(ana, state, alerts):
             alerts.append(post_msg(ana, sig, reason) if was3
                           else batal_msg(ana, sig, reason))
             continue
+        # gate IDM: tunggu -> tersapu?
         if sig["stage"] == 1 and sig.get("wait_idm") and sig.get("idm") is not None:
             if bull:
                 swept_now = (any(b["l"] < sig["idm"] for b in bars[-6:])
@@ -399,6 +395,7 @@ def transitions(ana, state, alerts):
                 if near:
                     sig["stage"] = 2
                 alerts.append(ready_msg(ana, sig, near))
+        # harga menyentuh zona = saatnya entry
         if touched and sig["stage"] < 3:
             sig["stage"] = 3
             if sig.get("idm") is None:
@@ -425,6 +422,7 @@ def transitions(ana, state, alerts):
             continue
         sig["updated"] = now
 
+    # --- POI fresh saat ini (zona terdekat dengan RR >= 2) ---
     p = ana.get("poi_valid")
     if p:
         key = sig_key(inst, bar, d, p["zl"], p["zh"])
@@ -495,8 +493,6 @@ def save_state(state):
 # ---------------- tick ----------------
 
 def tick():
-    if is_weekend():
-        return                          # diam total di weekend
     state = load_state()
     alerts = []
     now = time.time()
@@ -527,7 +523,7 @@ def tick():
         if state["_fail"] >= FAIL_ALERT_N:
             state["_fail"] = 1
             alerts.append(
-                "⚠️ WATCHER XAUUSD bermasalah: OKX tidak bisa diakses pada "
+                "⚠️ WATCHER SMC-CTC bermasalah: OKX tidak bisa diakses pada "
                 f"{FAIL_ALERT_N} tick beruntun (~{FAIL_ALERT_N * 5} menit). "
                 "Cek jaringan/gateway — sinyal bisa terlewat selama kondisi ini.")
     else:
@@ -535,9 +531,8 @@ def tick():
     save_state(state)
     if not alerts:
         return
-    footer = ("— SMC-CTC watcher XAUUSD · data XAUT-USDT (spot gold, ~MT4/5) · "
-              "semua waktu WIB · chart broker tetap acuan final · cek "
-              + now_wib() + " WIB")
+    footer = ("— SMC-CTC watcher · data OKX · semua waktu WIB · level bisa "
+              "geser 20–80 poin vs exchange lain · cek " + now_wib() + " WIB")
     if DEBUG:
         print("\n\n".join(alerts + [footer]))
     ok = send_tg("\n\n".join(alerts + [footer]))
@@ -555,6 +550,7 @@ def main():
                 fh.write(f"--- {now_wib()} ---\n" + traceback.format_exc() + "\n")
         except Exception:
             pass
+        # tetap exit 0 + stdout kosong supaya cron tidak spam error tiap 5 menit
 
 
 if __name__ == "__main__":
