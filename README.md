@@ -112,3 +112,23 @@ YouTube channel. Skill author: Drilesmana. MIT license.
 
 > Not financial advice. Levels shift between exchanges — always align with
 > your own chart.
+
+
+## Hasil backtest 77 video channel (v1.3.0)
+
+9 varian metode yang diajarkan di video channel "Candle to Candle" di-backtest
+objektif (OKX history-candles, 1 tahun, 4 pair BTC/ETH/SOL/XAUT, TF M5–H1,
+sim konservatif: SL diprioritaskan di bar isian sama, no lookahead, fee 0):
+
+| Varian | M30 WR | M30 R | H1 WR | H1 R |
+|---|---|---|---|---|
+| A: POI + gate IDM + TP range | 23.5% | −112R | 26.1% | −45R |
+| B: POI tanpa gate IDM | 26.9% | −34R | 29.2% | +24R |
+| **I: POI tanpa gate + TP 50% range** | **40.6%** | **+50R** | **35.0%** | **+18R** |
+| F: Setup 1A counter-trend | 20.5% | −318R | 18.5% | −390R |
+
+Kesimpulan: **varian I** (entry POI fresh langsung, TP scalp di 50% jarak ke
+batas range) paling konsisten — positif di keempat pair dan kedua TF besar.
+Gate IDM memotong hasil; counter-trend rugi besar; M5 negatif di semua varian.
+Detail + engine: folder `backtest/`. Limitasi: tanpa fee/spread, window 1 tahun,
+XAU didominasi regime bull gold.

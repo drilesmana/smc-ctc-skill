@@ -10,6 +10,10 @@ Alur baku (sama seperti video CTC):
   5. trading range = low valid <-> high valid
   6. POI = order block (candle berlawanan terakhir sebelum impuls), hanya yang FRESH
   7. entry limit di POI, SL di luar zona + padding ATR ("jangan pelit"), TP = BOS baru
+  8. MODE AGRESIF "varian I" (hasil backtest 77 video channel, OKX 1 thn x 4 pair):
+     entry POI fresh TANPA nunggu IDM tersapu, TP = 50% jarak ke batas range.
+     M30: WR 40.6% avgR +0.29 | H1: WR 35.0% avgR +0.15 | M5: negatif (jangan).
+     Gate IDM di sim justru memotong hasil; counter-trend 1A rugi besar.
 
 Usage:
   python3 smc_ctc.py [PAIR] [BAR]
@@ -210,7 +214,7 @@ for n, p in enumerate(fresh, 1):
     print(f"    POI{n}: {f(p['zl'])} - {f(p['zh'])}   ({t(p['ts'])}){tag}")
 
 tp = bars[hh_i]["h"] if d == "bull" else bars[ll_i]["l"]
-print(f"\n[7] SETUP  (TP = BOS baru / batas range = {f(tp)})")
+print(f"\n[7] SETUP — 2 gaya (backtest 1 thn OKX, 4 pair: M30/H1 oke, M5 jangan)")
 print(f"    ATR14 {BAR}: {f(atr)}   CMP: {f(cmp_)}")
 for n, p in enumerate(fresh[:3], 1):
     entry = (p["zl"] + p["zh"]) / 2
@@ -218,15 +222,20 @@ for n, p in enumerate(fresh[:3], 1):
     sl_ = (p["zl"] - pad) if d == "bull" else (p["zh"] + pad)
     risk = abs(entry - sl_); rew = abs(tp - entry)
     rr = rew / risk if risk else 0
+    # TP agresif = 50% jarak ke batas range (varian I — juara backtest)
+    tp_half = entry + (tp - entry) / 2
+    rr_half = (abs(tp_half - entry) / risk) if risk else 0
     warn = "  [RR<2, skip]" if rr < 2 else ""
-    print(f"    POI{n}  entry {f(entry)}  SL {f(sl_)}  TP {f(tp)}  "
-          f"risk {f(risk)}  reward {f(rew)}  RR 1:{rr:.2f}{warn}")
+    print(f"    POI{n}  entry {f(entry)}  SL {f(sl_)}")
+    print(f"      konservatif: TP {f(tp)}  risk {f(risk)}  reward {f(rew)}  RR 1:{rr:.2f}{warn}")
+    print(f"      agresif  : TP {f(tp_half)} (50% range)  risk {f(risk)}  RR 1:{rr_half:.2f}  <- varian I, tanpa tunggu IDM")
 
 print("\n[8] SYARAT & PEMBATAL")
 if idm is not None and swept is False:
-    print(f"    TUNGGU: IDM {f(idm)} belum tersapu — entry baru sah setelah harga melewatinya")
+    print(f"    GAYA KONSERVATIF: TUNGGU IDM {f(idm)} tersapu dulu")
+    print(f"    GAYA AGRESIF (varian I): boleh entry sekarang — backtest: gate IDM memotong hasil")
 elif idm is not None:
-    print("    IDM sudah tersapu — POI siap dieksekusi")
+    print("    IDM sudah tersapu — kedua gaya siap dieksekusi")
 print(f"    PEMBATAL: close {'di bawah' if d=='bull' else 'di atas'} titik ekstrem {f(ext_lvl)} "
       "= struktur pecah, ulang dari langkah 1")
 if rng < atr * 3:

@@ -1,0 +1,33 @@
+
+--- TF 30m ---
+varian           half    isi  win loss    wr%       R   avgR
+A_2a_poi_idm_rng H1      320   81  238  25.4%   -28.2  -0.09
+A_2a_poi_idm_rng H2      360   77  283  21.4%   -84.8  -0.24
+B_2a_poi_nogate  H1      369  103  265  28.0%    +0.3  +0.00
+B_2a_poi_nogate  H2      403   99  304  24.6%   -52.9  -0.13
+C_2a_poi_half    H1       72   32   40  44.4%   +29.1  +0.40
+C_2a_poi_half    H2       81   20   61  24.7%   -16.3  -0.20
+I_nogate_half    H1       82   43   39  52.4%   +54.3  +0.66
+I_nogate_half    H2       82   21   61  25.6%   -13.1  -0.16
+
+--- TF 1H ---
+varian           half    isi  win loss    wr%       R   avgR
+A_2a_poi_idm_rng H1      275   66  209  24.0%   -45.5  -0.17
+A_2a_poi_idm_rng H2      342   95  247  27.8%    -3.7  -0.01
+B_2a_poi_nogate  H1      321   90  231  28.0%    -5.6  -0.02
+B_2a_poi_nogate  H2      376  113  263  30.1%   +24.1  +0.06
+C_2a_poi_half    H1       52   18   34  34.6%    +8.6  +0.17
+C_2a_poi_half    H2       62   19   43  30.6%    -0.4  -0.01
+I_nogate_half    H1       58   23   35  39.7%   +18.4  +0.32
+I_nogate_half    H2       65   20   45  30.8%    -0.3  -0.00
+
+--- TF 5m ---
+varian           half    isi  win loss    wr%       R   avgR
+A_2a_poi_idm_rng H1      380   84  293  22.3%   -73.1  -0.19
+A_2a_poi_idm_rng H2      334   77  253  23.3%   -46.3  -0.14
+B_2a_poi_nogate  H1      433  110  320  25.6%   -32.4  -0.07
+B_2a_poi_nogate  H2      409  103  302  25.4%   -26.7  -0.07
+C_2a_poi_half    H1      110   35   75  31.8%    +9.5  +0.09
+C_2a_poi_half    H2       85   23   61  27.4%    -7.9  -0.09
+I_nogate_half    H1      123   46   77  37.4%   +32.8  +0.27
+I_nogate_half    H2      100   33   66  33.3%   +11.5  +0.11
